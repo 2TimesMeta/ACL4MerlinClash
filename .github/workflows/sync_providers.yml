@@ -42,6 +42,7 @@ jobs:
           rm -rf temp_source
 
       - name: Commit and Push
+        id: commit
         run: |
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
@@ -49,7 +50,28 @@ jobs:
           git add .
           if git diff --quiet && git diff --staged --quiet; then
             echo "No changes detected. Skipping commit."
+            echo "changed=false" >> "$GITHUB_OUTPUT"
           else
+            # 提交前记录本次变更的文件列表，供后续清除 CDN 缓存使用
+            git diff --cached --name-only > /tmp/changed_files.txt
             git commit -m "chore: sync files from ACL4SSR/Clash/Providers ($(date +'%Y-%m-%d %H:%M'))"
             git push origin main
+            echo "changed=true" >> "$GITHUB_OUTPUT"
           fi
+
+      - name: Purge jsDelivr Cache
+        if: steps.commit.outputs.changed == 'true'
+        env:
+          REPO_SLUG: ${{ github.repository }}
+          REF: ${{ github.ref_name }}
+        run: |
+          echo "Purging jsDelivr cache for changed files (${REPO_SLUG}@${REF})..."
+          while IFS= read -r f; do
+            [ -z "$f" ] && continue
+            # 对路径做 URL 编码，兼容带空格/特殊字符的文件名
+            enc=$(python3 -c 'import urllib.parse,sys; print(urllib.parse.quote(sys.argv[1]))' "$f")
+            printf '  -> %s\n' "$enc"
+            curl -sS --max-time 30 "https://purge.jsdelivr.net/gh/${REPO_SLUG}@${REF}/${enc}" || true
+            echo
+          done < /tmp/changed_files.txt
+          echo "jsDelivr purge finished."
