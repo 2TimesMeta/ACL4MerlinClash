@@ -55,7 +55,20 @@ jobs:
             # 提交前记录本次变更的文件列表，供后续清除 CDN 缓存使用
             git diff --cached --name-only > /tmp/changed_files.txt
             git commit -m "chore: sync files from ACL4SSR/Clash/Providers ($(date +'%Y-%m-%d %H:%M'))"
-            git push origin main
+
+            # 先同步远端最新提交并 rebase，避免与其他推送（人工或其他运行）冲突
+            pushed=false
+            for i in 1 2 3; do
+              git pull --rebase origin main || { git rebase --abort; exit 1; }
+              if git push origin main; then
+                pushed=true
+                break
+              fi
+              echo "Push attempt $i failed, retrying..."
+              sleep 5
+            done
+            [ "$pushed" = "true" ] || { echo "Failed to push after retries"; exit 1; }
+
             echo "changed=true" >> "$GITHUB_OUTPUT"
           fi
 
