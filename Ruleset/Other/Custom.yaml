@@ -1,5 +1,7 @@
 payload:
+  - DOMAIN-SUFFIX,ghcr.io
+  - DOMAIN-SUFFIX,u3c3.com
+  - DOMAIN-SUFFIX,u9a9.com
   - DOMAIN-SUFFIX,mtslash.life
   - DOMAIN-SUFFIX,huaweicloud.com
   - DOMAIN-SUFFIX,myhuaweicloud.com
-  - DOMAIN-SUFFIX,ghcr.io
